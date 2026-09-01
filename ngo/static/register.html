@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NGOFlow — Register</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Sans:wght@400;0,500;0,600&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+  <div class="auth-wrap">
+
+    <div class="auth-side">
+      <div class="brand-mark">
+        <span class="dot"></span>
+        NGOFlow
+      </div>
+
+      <div class="auth-headline">
+        <h1>Bring your work into the record.</h1>
+
+        <p>
+          Staff accounts join a team once an admin activates them.
+          Donor accounts are ready as soon as you sign up.
+        </p>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat">
+          <b>2 min</b>
+          <span>to create an account</span>
+        </div>
+
+        <div class="stat">
+          <b>bcrypt</b>
+          <span>password hashing</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="auth-form-side">
+      <div class="auth-form">
+
+        <h2>Create your account</h2>
+
+        <p class="sub">
+          Tell us who you are and how you&rsquo;ll use NGOFlow.
+        </p>
+
+        <div class="error-msg" id="register-error"></div>
+
+        <div class="role-pills">
+          <button
+            type="button"
+            class="role-pill active"
+            data-reg-role="donor"
+          >
+            Donor
+          </button>
+
+          <button
+            type="button"
+            class="role-pill"
+            data-reg-role="staff"
+          >
+            NGO staff
+          </button>
+        </div>
+
+        <form id="register-form">
+
+          <div class="field">
+            <label for="reg-name">Full name</label>
+
+            <input
+              id="reg-name"
+              placeholder="Asha Menon"
+              required
+            >
+          </div>
+
+          <div class="field">
+            <label for="reg-email">Email</label>
+
+            <input
+              type="email"
+              id="reg-email"
+              placeholder="you@organization.org"
+              required
+            >
+          </div>
+
+          <div class="field-row">
+
+            <div class="field">
+              <label for="reg-password">Password</label>
+
+              <input
+                type="password"
+                id="reg-password"
+                placeholder="At least 8 characters"
+                minlength="8"
+                required
+              >
+            </div>
+
+            <div class="field">
+              <label for="reg-confirm">Confirm</label>
+
+              <input
+                type="password"
+                id="reg-confirm"
+                placeholder="Repeat password"
+                minlength="8"
+                required
+              >
+            </div>
+
+          </div>
+
+          <button class="btn-primary">
+            Create account
+          </button>
+
+        </form>
+
+        <p class="switch-line">
+          Already registered?
+          <a href="/">Sign in</a>
+        </p>
+
+        <div class="hint-box hidden" id="staff-note">
+          <b>Note</b> &mdash; staff accounts stay pending until
+          an admin activates them in User management.
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

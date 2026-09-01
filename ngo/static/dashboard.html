@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NGOFlow</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+
+<body>
+  <div id="dashboard" class="dash-wrap hidden">
+
+    <aside class="sidebar">
+      <div class="brand-mark">
+        <span class="dot"></span>
+        NGOFlow
+      </div>
+
+      <div class="role-stamp" id="user-stamp"></div>
+
+      <div class="stamp-name" id="sidebar-name"></div>
+
+      <div class="stamp-role" id="sidebar-role"></div>
+
+      <div class="nav-group" id="nav-group"></div>
+
+      <div class="nav-spacer"></div>
+
+      <button class="logout-btn" id="logout-button">
+        Sign out
+      </button>
+    </aside>
+
+    <main class="main">
+      <div id="overview" class="tab-panel"></div>
+
+      <div id="users" class="tab-panel hidden"></div>
+
+      <div id="giving" class="tab-panel hidden"></div>
+
+      <div id="profile" class="tab-panel hidden"></div>
+    </main>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
