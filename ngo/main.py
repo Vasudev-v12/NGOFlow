@@ -25,6 +25,7 @@ from pydantic import BaseModel, EmailStr, Field
 ROOT_DIR = Path(__file__).resolve().parent
 STATIC_DIR = ROOT_DIR / "static"
 USERS_FILE = ROOT_DIR / "users.json"
+CAMPAIGNS_FILE = ROOT_DIR / "campaigns.json"
 load_dotenv(ROOT_DIR / ".env")
 
 SECRET_KEY = os.getenv("SECRET_KEY", "development-only-change-me")
@@ -32,6 +33,7 @@ ALGORITHM = "HS256"
 TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 users_lock = Lock()
+campaigns_lock = Lock()
 email_pattern = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 app = FastAPI(title="NGOFlow API")
@@ -71,6 +73,16 @@ class ProfileUpdateRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     current_password: str = Field(min_length=1, max_length=128)
     new_password: str = Field(min_length=8, max_length=128)
+
+
+class CampaignCreateRequest(BaseModel):
+    ngo_name: str = Field(min_length=2, max_length=120)
+    title: str = Field(min_length=5, max_length=160)
+    summary: str = Field(min_length=20, max_length=700)
+    category: str = Field(min_length=2, max_length=60)
+    location: str = Field(min_length=2, max_length=120)
+    goal_amount: int = Field(gt=0, le=100000000)
+    days_left: int = Field(ge=1, le=365)
 
 
 def read_users() -> list[dict]:
@@ -218,6 +230,44 @@ def me(user: dict = Depends(authenticated_user)):
     return public_user(user)
 
 
+@app.get("/api/campaigns")
+def list_campaigns():
+    try:
+        with campaigns_lock:
+            return json.loads(CAMPAIGNS_FILE.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError) as error:
+        raise HTTPException(status_code=500, detail="Campaign data is unavailable") from error
+
+
+@app.post("/api/campaigns", status_code=status.HTTP_201_CREATED)
+def create_campaign(payload: CampaignCreateRequest, staff: dict = Depends(require_role("staff"))):
+    """Only active NGO staff may add campaigns to the Phase 1 JSON campaign store."""
+    campaign = {
+        "id": secrets.token_urlsafe(10),
+        "ngo_name": payload.ngo_name.strip(),
+        "title": payload.title.strip(),
+        "summary": payload.summary.strip(),
+        "category": payload.category.strip(),
+        "location": payload.location.strip(),
+        "goal_amount": payload.goal_amount,
+        "raised_amount": 0,
+        "supporters": 0,
+        "days_left": payload.days_left,
+        "created_by": staff["id"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    with campaigns_lock:
+        try:
+            campaigns = json.loads(CAMPAIGNS_FILE.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError) as error:
+            raise HTTPException(status_code=500, detail="Campaign data is unavailable") from error
+        campaigns.insert(0, campaign)
+        temporary = CAMPAIGNS_FILE.with_suffix(".tmp")
+        temporary.write_text(json.dumps(campaigns, indent=2) + "\n", encoding="utf-8")
+        temporary.replace(CAMPAIGNS_FILE)
+    return campaign
+
+
 @app.patch("/api/profile")
 def update_profile(payload: ProfileUpdateRequest, current_user: dict = Depends(authenticated_user)):
     """Update only the signed-in user's profile; role and account status are never client-editable."""
@@ -297,6 +347,16 @@ def login_page():
 @app.get("/register")
 def register_page():
     return FileResponse(STATIC_DIR / "register.html")
+
+
+@app.get("/home")
+def home_page():
+    return FileResponse(STATIC_DIR / "home.html")
+
+
+@app.get("/post-campaign")
+def post_campaign_page():
+    return FileResponse(STATIC_DIR / "post-campaign.html")
 
 
 @app.get("/dashboard")

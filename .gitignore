@@ -2,3 +2,4 @@
 __pycache__/
 venv/
 service.sh
+gcp_commands.sh

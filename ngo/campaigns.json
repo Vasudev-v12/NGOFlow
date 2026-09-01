@@ -1,0 +1,64 @@
+[
+  {
+    "id": "rVmGmkgbBH-vKw",
+    "ngo_name": "Smart Flow",
+    "title": "Old age care",
+    "summary": "Funding for old age homes",
+    "category": "People",
+    "location": "India",
+    "goal_amount": 100000,
+    "raised_amount": 0,
+    "supporters": 0,
+    "days_left": 30,
+    "created_by": "pQ8b6jCYqu48RsfVn2fc9g",
+    "created_at": "2026-09-01T19:30:13.302751+00:00"
+  },
+  {
+    "id": "clean-water-kerala",
+    "ngo_name": "Coastal Relief Collective",
+    "title": "Clean water access for coastal communities",
+    "summary": "Help install community filtration units and restore safe drinking-water access after seasonal flooding.",
+    "category": "Water & sanitation",
+    "location": "Kerala, India",
+    "goal_amount": 18000,
+    "raised_amount": 11750,
+    "supporters": 86,
+    "days_left": 18
+  },
+  {
+    "id": "school-supplies-thrissur",
+    "ngo_name": "Learning Forward Foundation",
+    "title": "School supplies for 400 children",
+    "summary": "Provide books, learning kits and essential classroom materials before the new school term begins.",
+    "category": "Education",
+    "location": "Thrissur, India",
+    "goal_amount": 9500,
+    "raised_amount": 6420,
+    "supporters": 54,
+    "days_left": 24
+  },
+  {
+    "id": "women-skills-wayanad",
+    "ngo_name": "Sahaya Works",
+    "title": "Skills training for women-led households",
+    "summary": "Fund practical training, starter tools and mentoring for women building stable local livelihoods.",
+    "category": "Livelihoods",
+    "location": "Wayanad, India",
+    "goal_amount": 14000,
+    "raised_amount": 8850,
+    "supporters": 71,
+    "days_left": 31
+  },
+  {
+    "id": "health-outreach-madurai",
+    "ngo_name": "Health Bridge Network",
+    "title": "Mobile health outreach in rural Madurai",
+    "summary": "Bring basic health screenings, medicine and referral support to underserved villages.",
+    "category": "Community health",
+    "location": "Madurai, India",
+    "goal_amount": 12000,
+    "raised_amount": 10300,
+    "supporters": 93,
+    "days_left": 12
+  }
+]

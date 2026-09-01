@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NGOFlow — Post campaign</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css"><link rel="stylesheet" href="/static/home.css">
+</head>
+<body>
+  <header class="site-nav"><a class="brand-mark" href="/home"><span class="dot"></span>NGOFlow</a><nav class="site-nav-links" aria-label="Primary navigation"><a href="/home">Home</a><a class="active" href="/post-campaign">Post campaign</a><a href="/dashboard">User profile</a></nav></header>
+  <main class="campaign-page post-campaign-page">
+    <section class="campaign-intro"><p class="eyebrow">NGO staff workspace</p><h1>Post a campaign.</h1><p>Give supporters the essential details of the work your organization is leading.</p></section>
+    <section id="staff-only-message" class="campaign-error hidden"></section>
+    <form id="campaign-form" class="campaign-form hidden">
+      <div class="field"><label for="campaign-ngo">NGO name</label><input id="campaign-ngo" maxlength="120" required></div>
+      <div class="field"><label for="campaign-title">Campaign title</label><input id="campaign-title" maxlength="160" required></div>
+      <div class="field"><label for="campaign-summary">Summary</label><textarea id="campaign-summary" minlength="20" maxlength="700" required placeholder="Describe the purpose and expected impact of this campaign."></textarea></div>
+      <div class="field-row"><div class="field"><label for="campaign-category">Category</label><input id="campaign-category" maxlength="60" required placeholder="Education"></div><div class="field"><label for="campaign-location">Location</label><input id="campaign-location" maxlength="120" required placeholder="Kochi, India"></div></div>
+      <div class="field-row"><div class="field"><label for="campaign-goal">Funding goal (₹)</label><input id="campaign-goal" type="number" min="1" required placeholder="500000"></div><div class="field"><label for="campaign-days">Days remaining</label><input id="campaign-days" type="number" min="1" max="365" required placeholder="30"></div></div>
+      <div class="save-row"><span class="saved-msg" id="campaign-saved">Campaign posted.</span><button class="btn-solid" type="submit">Post campaign</button></div>
+    </form>
+  </main>
+  <script src="/static/post-campaign.js"></script>
+</body>
+</html>
