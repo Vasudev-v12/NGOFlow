@@ -1,3 +1,25 @@
+# NGOFlow (Express migration)
+
+This folder contains a Node.js + Express migration of the original FastAPI application.
+
+Quick start:
+
+1. Install dependencies
+
+```bash
+cd ngo
+npm install
+```
+
+2. Copy `.env.example` to `.env` and set values
+
+3. Run in development
+
+```bash
+npm run dev
+```
+
+API surface matches the original FastAPI app under `/api/*`.
 # NGOFlow
 
 FastAPI authentication backend and split static frontend for NGOFlow.

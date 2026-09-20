@@ -1,20 +1,18 @@
-FROM python:3.11-slim
+FROM node:20-alpine
 
-# Prevent Python from writing .pyc files & buffer output
-ENV PYTHONUNBUFFERED=1
-
+# Set working directory
 WORKDIR /app
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install production dependencies
+COPY package.json package-lock.json* ./
+RUN npm ci --omit=dev --no-audit --no-fund
 
-# Copy application source code and entrypoint script
+# Copy application source
 COPY . .
 
-# Expose local port 8000
-ENV PORT=8080
-EXPOSE 8080
+# Default port (matches src/server.js)
+ENV PORT=5001
+EXPOSE 5001
 
-# Run entrypoint script on container startup
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
+# Start the server
+CMD ["node", "src/server.js"]
