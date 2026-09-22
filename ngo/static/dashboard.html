@@ -19,7 +19,7 @@
   <div id="dashboard" class="dash-wrap hidden">
 
     <aside class="sidebar">
-      <a id="dashboard-home-link" class="brand-mark dashboard-brand" href="/home" style="text-decoration:none" onclick="window.location.assign('/home'); return false;">
+      <a id="dashboard-home-link" class="brand-mark dashboard-brand" href="/" style="text-decoration:none" onclick="window.location.assign('/'); return false;">
         <span class="dot"></span>
         NGOFlow
       </a>
@@ -29,6 +29,7 @@
       <div class="stamp-name" id="sidebar-name"></div>
 
       <div class="stamp-role" id="sidebar-role"></div>
+      <div class="ngo-name" id="ngo-name"></div>
 
       <div class="nav-group" id="nav-group"></div>
 
@@ -42,10 +43,13 @@
     <main class="main">
       <div id="overview" class="tab-panel"></div>
       <div id="users" class="tab-panel hidden"></div>
+      <div id="donors" class="tab-panel hidden"></div>
+      <div id="ngos" class="tab-panel hidden"></div>
       <div id="campaigns" class="tab-panel hidden"></div>
       <div id="beneficiaries" class="tab-panel hidden"></div>
       <div id="funds" class="tab-panel hidden"></div>
       <div id="reports" class="tab-panel hidden"></div>
+      <div id="activities" class="tab-panel hidden"></div>
       <div id="giving" class="tab-panel hidden"></div>
       <div id="profile" class="tab-panel hidden"></div>
     </main>

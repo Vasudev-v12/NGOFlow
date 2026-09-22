@@ -9,9 +9,11 @@ import campaignRoute from './routes/campaignRoute.js';
 import profileRoute from './routes/profileRoute.js';
 import dashboardRoute from './routes/dashboardRoute.js';
 import userRoute from './routes/userRoute.js';
-import beneficiaryRoute from './routes/beneficiaryRoute.js';
 import donationRoute from './routes/donationRoute.js';
 import reportRoute from './routes/reportRoute.js';
+import fundRoute from './routes/fundRoute.js';
+import activityRoute from './routes/activityRoute.js';
+import ngoRoute from './routes/ngoRoute.js';
 import dns from 'node:dns';
 
 dns.setServers(['8.8.8.8', '1.1.1.1']);
@@ -29,13 +31,16 @@ app.use('/api/campaigns', campaignRoute);
 app.use('/api/profile', profileRoute);
 app.use('/api/dashboard', dashboardRoute);
 app.use('/api/users', userRoute);
-app.use('/api/beneficiaries', beneficiaryRoute);
 app.use('/api/donations', donationRoute);
 app.use('/api/reports', reportRoute);
+app.use('/api/funds', fundRoute);
+app.use('/api/activities', activityRoute);
+app.use('/api/ngos', ngoRoute);
 
-app.get('/', (req, res) => res.sendFile(path.join(STATIC_DIR, 'login.html')));
-app.get('/register', (req, res) => res.sendFile(path.join(STATIC_DIR, 'register.html')));
+app.get('/', (req, res) => res.sendFile(path.join(STATIC_DIR, 'home.html')));
 app.get('/home', (req, res) => res.sendFile(path.join(STATIC_DIR, 'home.html')));
+app.get('/register', (req, res) => res.sendFile(path.join(STATIC_DIR, 'register.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(STATIC_DIR, 'login.html')));
 app.get('/post-campaign', (req, res) => res.sendFile(path.join(STATIC_DIR, 'post-campaign.html')));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(STATIC_DIR, 'dashboard.html')));
 

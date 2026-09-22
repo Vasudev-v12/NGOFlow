@@ -1,10 +1,9 @@
-import express from "express";
-import { user, userStatus } from "../controllers/userController.js";
+import express from 'express';
+import { deleteUser, listDonors, listUsers, updateUserStatus } from '../controllers/userController.js';
 
 const router = express.Router();
-
-router.get('/', user);
-
-router.patch('/:userId/status', userStatus);
-
+router.get('/', listUsers);
+router.get('/donors', listDonors);
+router.patch('/:userId/status', updateUserStatus);
+router.delete('/:userId', deleteUser);
 export default router;

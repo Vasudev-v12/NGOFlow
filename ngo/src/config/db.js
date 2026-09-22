@@ -24,7 +24,7 @@ export default async function connectDB() {
       });
 
       isConnected = true;
-      console.log(`MongoDB connected successfully using ${uri}`);
+      console.log(`MongoDB connected successfully using`);
       return mongoose.connection;
     } catch (error) {
       lastError = error;

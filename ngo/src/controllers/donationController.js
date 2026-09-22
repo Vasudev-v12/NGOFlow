@@ -1,56 +1,40 @@
-import { Donation, Campaign, Ngo } from '../models/models.js';
-import { getCurrentUserFromHeader } from '../methods.js';
+import { Campaign, Donation, FundEntry, Ngo } from '../models/models.js';
+import { ROLES, getCurrentUserFromHeader, httpError, recordActivity, requireRole, resolveTenantNgo } from '../methods.js';
 
 const listDonations = async (req, res) => {
   try {
     const current = await getCurrentUserFromHeader(req.headers.authorization);
-    const ngo = current.ngoId ? await Ngo.findById(current.ngoId) : await Ngo.findOne({ adminId: current._id });
-
-    const query = current.role === 'donor' ? { donorId: current._id } : { ngoId: ngo?._id || current.ngoId };
+    let query;
+    if (current.role === ROLES.DONOR) query = { donorId: current._id };
+    else if (current.role === ROLES.SUPER_ADMIN) query = {};
+    else if (current.role === ROLES.NGO_ADMIN) query = { ngoId: await resolveTenantNgo(current) };
+    else {
+      const campaigns = await Campaign.find({ ngoId: await resolveTenantNgo(current), createdBy: current._id }).select('_id').lean();
+      query = { campaignId: { $in: campaigns.map(item => item._id) } };
+    }
     const donations = await Donation.find(query).sort({ createdAt: -1 }).lean();
-
-    res.json(donations.map((item) => ({ ...item, id: item._id.toString() })));
-  } catch (error) {
-    res.status(error.status || 500).json({ detail: error.message || 'Donation data is unavailable' });
-  }
+    res.json(donations.map(item => ({ ...item, id: item._id.toString() })));
+  } catch (error) { res.status(error.status || 500).json({ detail: error.message || 'Donation data is unavailable' }); }
 };
 
 const createDonation = async (req, res) => {
   try {
     const current = await getCurrentUserFromHeader(req.headers.authorization);
-    if (current.role !== 'donor') {
-      return res.status(403).json({ detail: 'Donor access is required' });
-    }
-
-    const payload = req.body || {};
-    const campaign = await Campaign.findById(payload.campaignId || payload.campaign_id);
-    if (!campaign) {
-      return res.status(404).json({ detail: 'Campaign not found' });
-    }
-
-    const amount = Number(payload.amount || 0);
-    if (!amount || amount <= 0) {
-      return res.status(400).json({ detail: 'Donation amount must be greater than zero' });
-    }
-
-    const donation = await Donation.create({
-      donorId: current._id,
-      donorName: current.name,
-      campaignId: campaign._id,
-      ngoId: campaign.ngoId || null,
-      amount,
-      message: String(payload.message || 'Support for campaign').trim(),
-      status: 'success',
-    });
-
-    campaign.raisedAmount = Number(campaign.raisedAmount || 0) + amount;
-    campaign.supporters = Number(campaign.supporters || 0) + 1;
+    requireRole(current, [ROLES.DONOR]);
+    const campaign = await Campaign.findOne({ _id: req.body.campaignId || req.body.campaign_id, status: 'active' });
+    if (!campaign) throw httpError(404, 'Campaign not found');
+    if (!await Ngo.exists({ _id: campaign.ngoId, status: 'active' })) throw httpError(403, 'This campaign’s NGO is not active');
+    const amount = Number(req.body.amount || 0);
+    if (!Number.isFinite(amount) || amount <= 0) throw httpError(422, 'Donation amount must be greater than zero');
+    const isNewSupporter = !await Donation.exists({ donorId: current._id, campaignId: campaign._id, status: 'success' });
+    const donation = await Donation.create({ donorId: current._id, donorName: current.name, campaignId: campaign._id, ngoId: campaign.ngoId, amount, message: String(req.body.message || 'Support for campaign').trim(), status: 'success' });
+    await FundEntry.create({ ngoId: campaign.ngoId, campaignId: campaign._id, type: 'fund', amount, description: 'Donation received', recordedBy: current._id });
+    campaign.raisedAmount += amount;
+    if (isNewSupporter) campaign.supporters += 1;
     await campaign.save();
-
+    await recordActivity({ ngoId: campaign.ngoId, actorId: current._id, action: 'donation.created', entityType: 'donation', entityId: donation._id, details: { campaignId: campaign._id, amount } });
     res.status(201).json({ ...donation.toObject(), id: donation._id.toString() });
-  } catch (error) {
-    res.status(error.status || 500).json({ detail: error.message || 'Donation could not be recorded' });
-  }
+  } catch (error) { res.status(error.status || 500).json({ detail: error.message || 'Donation could not be recorded' }); }
 };
 
 export { listDonations, createDonation };

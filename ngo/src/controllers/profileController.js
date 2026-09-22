@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { User } from '../models/models.js';
-import { publicUser, getCurrentUserFromHeader } from '../methods.js';
+import { publicUser, getCurrentUserFromHeader, recordActivity } from '../methods.js';
 
 const patchProfile = async (req, res) => {
   try {
@@ -21,6 +21,7 @@ const patchProfile = async (req, res) => {
       { new: true }
     );
 
+    if (updated.ngoId) await recordActivity({ ngoId: updated.ngoId, actorId: updated._id, action: 'user.profile_updated', entityType: 'user', entityId: updated._id });
     res.json(publicUser(updated));
   } catch (e) {
     res.status(e.status || 401).json({ detail: e.message });
@@ -38,6 +39,7 @@ const changePassword = async (req, res) => {
 
     user.passwordHash = bcrypt.hashSync(req.body.new_password, 10);
     await user.save();
+    if (user.ngoId) await recordActivity({ ngoId: user.ngoId, actorId: user._id, action: 'user.password_changed', entityType: 'user', entityId: user._id });
     res.status(204).end();
   } catch (e) {
     res.status(e.status || 401).json({ detail: e.message });

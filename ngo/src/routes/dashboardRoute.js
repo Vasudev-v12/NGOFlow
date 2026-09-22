@@ -1,10 +1,12 @@
 import express from "express";
-import { admin, staff, donor } from "../controllers/dashboardController.js";
+import { superAdmin, ngoAdmin, staff, donor } from "../controllers/dashboardController.js";
 
 const router = express.Router();
 
-router.get('/admin', admin);
-router.get('/campaigns', admin);
+router.get('/super_admin', superAdmin);
+router.get('/ngo_admin', ngoAdmin);
+router.get('/admin', ngoAdmin);
+router.get('/campaigns', ngoAdmin);
 
 router.get('/staff', staff);
 

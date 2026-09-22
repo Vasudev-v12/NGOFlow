@@ -1,5 +1,18 @@
 const campaignTokenKey = "ngoflow_access_token";
 const getCampaignToken = () => localStorage.getItem(campaignTokenKey);
+function renderSiteNav() {
+  const nav = document.getElementById("site-nav-links");
+  if (!nav) return;
+  const currentPath = window.location.pathname;
+  const isLoggedIn = Boolean(getCampaignToken());
+  nav.innerHTML = [
+    `<a class="${currentPath === "/" || currentPath === "/home" ? "active" : ""}" href="/">Home</a>`,
+    `<a class="${currentPath === "/post-campaign" ? "active" : ""}" href="/post-campaign">Post campaign</a>`,
+    isLoggedIn
+      ? `<a class="${currentPath === "/dashboard" ? "active" : ""}" href="/dashboard">Dashboard</a>`
+      : `<a href="/login">Sign in</a>`
+  ].join("");
+}
 const postApi = async (path, options = {}) => {
   const response = await fetch("/api" + path, 
     { ...options, headers: { "Content-Type": "application/json", 
@@ -31,12 +44,15 @@ async function initialisePostCampaign() {
         ngo_name: postEl("campaign-ngo").value.trim(), title: postEl("campaign-title").value.trim(),
         summary: postEl("campaign-summary").value.trim(), category: postEl("campaign-category").value.trim(),
         location: postEl("campaign-location").value.trim(), goal_amount: Number(postEl("campaign-goal").value),
-        days_left: Number(postEl("campaign-days").value)
+        days_left: Number(postEl("campaign-days").value),
+        beneficiary_target: Number(postEl("campaign-beneficiary-target").value),
+        beneficiaries_served: Number(postEl("campaign-beneficiaries-served").value)
       }) });
       postEl("campaign-saved").classList.add("show");
       form.reset();
-      window.setTimeout(() => window.location.assign("/home"), 900);
+      window.setTimeout(() => window.location.assign("/"), 900);
     } catch (error) { message.textContent = error.message; message.classList.remove("hidden"); }
   });
 }
+renderSiteNav();
 initialisePostCampaign();
