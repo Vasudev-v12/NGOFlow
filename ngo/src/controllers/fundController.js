@@ -67,6 +67,19 @@ const createUtilization = async (req, res) => {
     }
 
     const entry = await FundEntry.create({ ngoId, campaignId, type: 'utilization', amount, description, category, utilizedOn, beneficiariesReached, proofUrl, recordedBy: current._id });
+    if (campaignId && beneficiariesReached > 0) {
+      // Keep the campaign's served count in step with the people reached, capped at its target (when one is set).
+      await Campaign.updateOne({ _id: campaignId }, [{
+        $set: {
+          beneficiariesServed: {
+            $let: {
+              vars: { total: { $add: [{ $ifNull: ['$beneficiariesServed', 0] }, beneficiariesReached] } },
+              in: { $cond: [{ $gt: ['$beneficiaryTarget', 0] }, { $min: ['$$total', '$beneficiaryTarget'] }, '$$total'] }
+            }
+          }
+        }
+      }]);
+    }
     await recordActivity({ ngoId, actorId: current._id, action: 'fund.utilization_recorded', entityType: 'fund_entry', entityId: entry._id, details: { amount, campaignId, category } });
     res.status(201).json({ ...entry.toObject(), id: entry._id.toString() });
   } catch (error) { res.status(error.status || 500).json({ detail: error.message || 'Fund utilization could not be recorded' }); }
