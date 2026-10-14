@@ -28,7 +28,7 @@ const createDonation = async (req, res) => {
     if (!Number.isFinite(amount) || amount <= 0) throw httpError(422, 'Donation amount must be greater than zero');
     const isNewSupporter = !await Donation.exists({ donorId: current._id, campaignId: campaign._id, status: 'success' });
     const donation = await Donation.create({ donorId: current._id, donorName: current.name, campaignId: campaign._id, ngoId: campaign.ngoId, amount, message: String(req.body.message || 'Support for campaign').trim(), status: 'success' });
-    await FundEntry.create({ ngoId: campaign.ngoId, campaignId: campaign._id, type: 'fund', amount, description: 'Donation received', recordedBy: current._id });
+    await FundEntry.create({ ngoId: campaign.ngoId, campaignId: campaign._id, type: 'fund', amount, description: 'Donation received', recordedBy: current._id, donationId: donation._id });
     campaign.raisedAmount += amount;
     if (isNewSupporter) campaign.supporters += 1;
     await campaign.save();

@@ -1,6 +1,7 @@
-import { ActivityLog, Campaign, Donation, FundEntry, Ngo, User } from '../models/models.js';
+import { ActivityLog, Campaign, Donation, FundEntry, Ngo, UTILIZATION_CATEGORIES, User } from '../models/models.js';
 import { ROLES, getCurrentUserFromHeader, publicUser, requireRole, resolveTenantNgo } from '../methods.js';
 import { serializeCampaign } from './campaignController.js';
+import { buildDonorImpact } from './impactController.js';
 
 const serialize = item => ({ ...item, id: item._id.toString() });
 
@@ -38,6 +39,7 @@ async function buildDashboard(user) {
     beneficiary_target: campaigns.reduce((sum, item) => sum + Number(item.beneficiaryTarget || 0), 0),
     beneficiaries_served: campaigns.reduce((sum, item) => sum + Number(item.beneficiariesServed || 0), 0),
     total_campaigns: campaigns.length,
+    utilization_categories: Object.entries(UTILIZATION_CATEGORIES).map(([value, label]) => ({ value, label })),
   };
 }
 
@@ -56,8 +58,9 @@ const staff = async (req, res) => {
 const donor = async (req, res) => {
   try {
     const user = await getCurrentUserFromHeader(req.headers.authorization); requireRole(user, [ROLES.DONOR]);
-    const [donations, campaigns] = await Promise.all([Donation.find({ donorId: user._id }).sort({ createdAt: -1 }).lean(), Campaign.find({ status: 'active' }).sort({ createdAt: -1 }).lean()]);
-    res.json({ user: publicUser(user), campaigns: campaigns.map(serializeCampaign), donations: donations.map(serialize), giving_history: donations.map(item => ({ date: item.createdAt, program: item.message, amount: item.amount })), total_given: donations.reduce((sum, item) => sum + item.amount, 0) });
+    const [donations, campaigns, impact] = await Promise.all([Donation.find({ donorId: user._id }).sort({ createdAt: -1 }).lean(), Campaign.find({ status: 'active' }).sort({ createdAt: -1 }).lean(), buildDonorImpact(user)]);
+    const titles = new Map(impact.campaigns.map(item => [item.id, `${item.title} · ${item.ngoName}`]));
+    res.json({ user: publicUser(user), campaigns: campaigns.map(serializeCampaign), donations: donations.map(serialize), giving_history: donations.map(item => ({ date: item.createdAt, program: titles.get(item.campaignId.toString()) || item.message, description: item.message, amount: item.amount, type: 'donation' })), total_given: impact.summary.totalGiven, impact });
   } catch (error) { res.status(error.status || 500).json({ detail: error.message }); }
 };
 

@@ -53,7 +53,17 @@ const el = id => document.getElementById(id),
     beneficiaries = el("beneficiaries"),
     funds = el("funds"),
     reports = el("reports"),
-    activities = el("activities");
+    activities = el("activities"),
+    impact = el("impact");
+
+const money = v => `₹${Number(v || 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`,
+    pct = v => `${Math.round(Number(v || 0) * 100)}%`,
+    fmtDate = v => {
+        const date = v ? new Date(v) : null;
+        return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—";
+    },
+    safeUrl = v => /^https?:\/\//i.test(String(v || "")) ? esc(v) : "",
+    isNgoAdmin = r => r === "ngo_admin" || r === "admin";
 
 document.addEventListener("DOMContentLoaded", () => {
     if (document.getElementById("login-form")) login();
@@ -156,7 +166,7 @@ function render(u, d) {
         ? [["overview", "Overview"], ["users", "User management"], ["donors", "Donors"], ...(u.role === "super_admin" ? [["ngos", "NGOs"]] : []), ["campaigns", "Campaigns"], ["beneficiaries", "Beneficiaries"], ["funds", "Funds"], ["reports", "Reports"], ["activities", "Activity log"], ["profile", "Profile"]]
         : u.role === "staff"
             ? [["overview", "Overview"], ["donors", "Donors"], ["campaigns", "Campaigns"], ["beneficiaries", "Beneficiaries"], ["funds", "Funds"], ["reports", "Reports"], ["profile", "Profile"]]
-            : [["overview", "Overview"], ["funds", "Giving history"], ["profile", "Profile"]];
+            : [["overview", "Overview"], ["impact", "Fund tracking"], ["funds", "Giving history"], ["profile", "Profile"]];
 
     navGroup.innerHTML = tabs.map(([tabName, label], idx) => `<button class="nav-btn ${idx === 0 ? "active" : ""}" data-tab="${tabName}"><span class="dash"></span>${label}</button>`).join("");
     document.querySelectorAll(".nav-btn").forEach((button) => {
@@ -169,19 +179,26 @@ function render(u, d) {
     ngos.innerHTML = u.role === "super_admin" ? ngoManagementHtml(d.ngos || []) : "";
     campaigns.innerHTML = campaignHtml(d.campaigns || []);
     beneficiaries.innerHTML = beneficiaryHtml(d.campaigns || [], d.beneficiary_target, d.beneficiaries_served);
-    funds.innerHTML = givingHtml(u.role === "donor" ? (d.giving_history || []) : (d.funds || []));
-    reports.innerHTML = reportHtml(d);
+    funds.innerHTML = u.role === "donor" ? givingHtml(d.giving_history || [], true) : fundsHtml(u.role, d);
+    impact.innerHTML = u.role === "donor" ? impactHtml(d.impact) : "";
+    if (isReportAdmin(u.role)) initReports(u, d);
+    else reports.innerHTML = reportHtml(d);
     activities.innerHTML = activityHtml(d.activities || []);
     profile.innerHTML = profileHtml(u);
     bindProfile();
 
     if (u.role === "super_admin" || u.role === "ngo_admin" || u.role === "admin") bindUsers(d.users || [], u.role);
     if (u.role === "super_admin") bindNgos();
+    if (isNgoAdmin(u.role)) bindUtilization();
+    document.querySelectorAll("[data-goto]").forEach((button) => {
+        button.onclick = () => tab(button.dataset.goto);
+    });
 }
 
 function tab(x) {
     document.querySelectorAll(".nav-btn").forEach((button) => button.classList.toggle("active", button.dataset.tab === x));
     document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.toggle("hidden", panel.id !== x));
+    if (x === "reports") onReportsTabShown();
 }
 
 function overviewHtml(role, d) {
@@ -194,8 +211,40 @@ function overviewHtml(role, d) {
         return `<div class="main-header"><div><h1>Overview</h1><p>Your assigned campaigns and community impact.</p></div></div><div class="stat-cards">${[["Active campaigns", (d.campaigns || []).length], ["Beneficiaries served", d.beneficiaries_served || 0], ["Funds tracked", `₹${totalRaised.toLocaleString('en-IN')}`]].map((entry) => `<div class="stat-card"><div class="label">${entry[0]}</div><div class="value">${entry[1]}</div></div>`).join("")}</div><div class="panel"><div class="panel-head"><h3>Staff workflow</h3></div><div class="empty-state"><div class="serif">Operations ready.</div><div>Campaign, donor, and beneficiary-count information is tracked here.</div></div></div>`;
     }
 
-    const totalGiven = Number((d.giving_history || []).reduce((sum, item) => sum + Number(String(item.amount || '').replace(/[^\d]/g, '') || 0), 0));
-    return `<div class="main-header"><div><h1>Overview</h1><p>Track every contribution and campaign you support.</p></div></div><div class="stat-cards">${[["Total given", `₹${totalGiven.toLocaleString('en-IN')}`], ["Campaigns supported", (d.campaigns || []).length], ["Last gift", (d.giving_history || [])[0] ? d.giving_history[0].amount : '—']].map((entry) => `<div class="stat-card"><div class="label">${entry[0]}</div><div class="value">${entry[1]}</div></div>`).join("")}</div><div class="panel"><div class="panel-head"><h3>Campaigns you can support</h3></div><div class="empty-state"><div class="serif">Browse active programs.</div><div>Use the campaigns and funds tabs to donate and track your contributions.</div></div></div>`;
+    const im = d.impact || { summary: {}, categories: [], campaigns: [] };
+    const sm = im.summary || {};
+    const last = (d.giving_history || [])[0];
+    const stats = [["Total given", money(sm.totalGiven)], ["Campaigns supported", sm.campaignsSupported || 0], ["Funds put to use", money(sm.utilizedEstimate), `${pct(sm.utilizationRate)} of your giving`], ["Last gift", last ? money(last.amount) : "—", last ? fmtDate(last.date) : ""]];
+    const top = (im.campaigns || []).slice(0, 3);
+    return `<div class="main-header"><div><h1>Overview</h1><p>Track every contribution and see how NGOs are putting it to work.</p></div></div>${statCards(stats)}<div class="impact-two"><div class="panel"><div class="panel-head"><h3>Where your money went</h3></div><div class="panel-body">${categoryBars(im.categories, sm.totalGiven, sm.unspentEstimate)}</div></div><div class="panel"><div class="panel-head"><h3>Campaigns you support</h3></div><div class="panel-body">${top.length ? top.map((c) => `<div class="mini-campaign"><div class="mini-title">${esc(c.title)}</div><div class="muted">${esc(c.ngoName)} · you gave ${money(c.yourContribution)}</div>${meter(c.utilizationRate, `${pct(c.utilizationRate)} of funds raised has been utilized`)}</div>`).join("") + `<button class="row-btn" data-goto="impact">View full fund tracking</button>` : '<div class="muted">You haven’t donated yet. <a href="/">Browse active campaigns</a> to get started.</div>'}</div></div></div>`;
+}
+
+function statCards(entries) {
+    return `<div class="stat-cards">${entries.map(([label, value, note]) => `<div class="stat-card"><div class="label">${label}</div><div class="value">${value}</div>${note ? `<div class="delta">${esc(note)}</div>` : ""}</div>`).join("")}</div>`;
+}
+
+function meter(ratio, caption) {
+    const width = Math.max(0, Math.min(100, Math.round(Number(ratio || 0) * 100)));
+    return `<div class="meter" role="img" aria-label="${esc(caption)}"><span style="width:${width}%"></span></div><div class="meter-caption">${esc(caption)}</div>`;
+}
+
+function categoryBars(categories, total, unspent) {
+    const rows = [...(categories || []).map((c) => [c.label, c.amount, ""]), ...(Number(unspent) > 0 ? [["Not yet utilized", unspent, "is-pending"]] : [])];
+    if (!rows.length) return '<div class="muted">No spending has been reported against your donations yet.</div>';
+    const base = Number(total) || rows.reduce((sum, row) => sum + Number(row[1]), 0);
+    return `<div class="bar-list">${rows.map(([label, amount, cls]) => `<div class="bar-row"><div class="bar-label"><span>${esc(label)}</span><span>${money(amount)}</span></div><div class="bar-track"><span class="${cls}" style="width:${Math.max(1, Math.round(Number(amount) / base * 100))}%"></span></div></div>`).join("")}</div>`;
+}
+
+function impactHtml(im) {
+    const data = im || { summary: {}, categories: [], campaigns: [], ngos: [], recentUtilizations: [] };
+    const sm = data.summary || {};
+    const header = '<div class="main-header"><div><h1>Fund tracking</h1><p>How the NGOs you support have used the money raised. Your share of spending is estimated in proportion to your contribution to each campaign.</p></div></div>';
+    if (!sm.donationCount) return `${header}<div class="panel"><div class="empty-state"><div class="serif">Nothing to track yet.</div><div>Once you donate to a campaign, you’ll see exactly how those funds are being used.</div></div></div>`;
+    const stats = [["Total given", money(sm.totalGiven), `${sm.donationCount} donation${sm.donationCount === 1 ? "" : "s"}`], ["Utilized (your share)", money(sm.utilizedEstimate), `${pct(sm.utilizationRate)} of your giving`], ["Awaiting use", money(sm.unspentEstimate)], ["People served", Number(sm.beneficiariesServed || 0).toLocaleString("en-IN"), "across campaigns you support"]];
+    const campaignCards = (data.campaigns || []).map((c) => `<div class="impact-card"><div class="impact-card-head"><div><div class="mini-title">${esc(c.title)}</div><div class="muted">${esc(c.ngoName)} · ${esc(c.category)} · ${esc(c.location)}</div></div><span class="badge ${c.status === "active" ? "badge-active" : "badge-inactive"}">${esc(c.status)}</span></div><div class="impact-figures"><div><div class="label">You gave</div><div class="fig">${money(c.yourContribution)}</div><div class="muted">${pct(c.yourShare)} of campaign funds</div></div><div><div class="label">Your share used</div><div class="fig">${money(c.yourUtilized)}</div></div><div><div class="label">Raised</div><div class="fig">${money(c.raisedAmount)}</div><div class="muted">of ${money(c.goalAmount)} goal</div></div><div><div class="label">Utilized</div><div class="fig">${money(c.utilizedAmount)}</div><div class="muted">${money(c.balance)} remaining</div></div></div>${meter(c.utilizationRate, `${pct(c.utilizationRate)} of funds raised has been utilized`)}${c.beneficiaryTarget ? meter(c.beneficiariesServed / c.beneficiaryTarget, `${Number(c.beneficiariesServed).toLocaleString("en-IN")} of ${Number(c.beneficiaryTarget).toLocaleString("en-IN")} beneficiaries served`) : ""}${c.categories.length ? `<div class="chip-row">${c.categories.map((cat) => `<span class="chip">${esc(cat.label)} · ${money(cat.amount)}</span>`).join("")}</div>` : '<div class="muted">No spending reported for this campaign yet.</div>'}</div>`).join("");
+    const ngoRows = (data.ngos || []).map((n) => `<tr><td>${esc(n.name)}${n.location ? `<div class="muted">${esc(n.location)}</div>` : ""}</td><td>${money(n.yourContribution)}</td><td>${money(n.totalReceived)}</td><td>${money(n.totalUtilized)}${n.generalUtilized ? `<div class="muted">${money(n.generalUtilized)} general operations</div>` : ""}</td><td>${pct(n.utilizationRate)}</td></tr>`).join("");
+    const feed = (data.recentUtilizations || []).map((x) => `<tr><td>${fmtDate(x.utilizedOn)}</td><td>${esc(x.campaignTitle || "General operations")}<div class="muted">${esc(x.ngoName)}</div></td><td><span class="chip">${esc(x.label)}</span></td><td>${esc(x.description || "—")}${x.beneficiariesReached ? `<div class="muted">${Number(x.beneficiariesReached).toLocaleString("en-IN")} people reached</div>` : ""}</td><td>${money(x.amount)}</td><td>${safeUrl(x.proofUrl) ? `<a href="${safeUrl(x.proofUrl)}" target="_blank" rel="noopener noreferrer">View</a>` : "—"}</td></tr>`).join("");
+    return `${header}${statCards(stats)}<div class="panel"><div class="panel-head"><h3>Where your money went</h3></div><div class="panel-body">${categoryBars(data.categories, sm.totalGiven, sm.unspentEstimate)}</div></div><h3 class="section-title">Campaigns you support</h3><div class="impact-grid">${campaignCards}</div><div class="panel"><div class="panel-head"><h3>NGO transparency</h3></div><div class="table-scroll"><table><thead><tr><th>NGO</th><th>You gave</th><th>Total received</th><th>Total utilized</th><th>Utilization</th></tr></thead><tbody>${ngoRows}</tbody></table></div></div><div class="panel"><div class="panel-head"><h3>Spending reported by NGOs</h3></div>${feed ? `<div class="table-scroll"><table><thead><tr><th>Date</th><th>Campaign</th><th>Category</th><th>Details</th><th>Amount</th><th>Proof</th></tr></thead><tbody>${feed}</tbody></table></div>` : '<div class="empty-state"><div class="serif">No spending reported yet.</div><div>The NGOs you support haven’t recorded any fund utilization so far.</div></div>'}</div>`;
 }
 
 function pending(us) {
@@ -219,9 +268,49 @@ function beneficiaryHtml(campaignsList, target = 0, served = 0) {
     return `<div class="main-header"><div><h1>Beneficiary impact</h1><p>Aggregate counts are tracked per campaign; individual beneficiary records are not stored.</p></div></div><div class="stat-cards">${[["Target", target || 0], ["Served", served || 0]].map((entry) => `<div class="stat-card"><div class="label">${entry[0]}</div><div class="value">${entry[1]}</div></div>`).join("")}</div><div class="panel">${list.length ? `<table><thead><tr><th>Campaign</th><th>Target</th><th>Served</th></tr></thead><tbody>${list.map((item) => `<tr><td>${esc(item.title)}</td><td>${Number(item.beneficiary_target || item.beneficiaryTarget || 0).toLocaleString('en-IN')}</td><td>${Number(item.beneficiaries_served || item.beneficiariesServed || 0).toLocaleString('en-IN')}</td></tr>`).join("")}</tbody></table>` : '<div class="empty-state"><div class="serif">No campaign impact counts yet.</div><div>Create a campaign to begin tracking aggregate beneficiary targets and outcomes.</div></div>'}</div>`;
 }
 
-function givingHtml(items) {
+function givingHtml(items, donorView = false) {
     const list = items || [];
-    return `<div class="main-header"><div><h1>Funds</h1><p>Donations and utilization records, scoped to the NGO and optionally a campaign.</p></div></div><div class="panel">${list.length ? `<table><thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Amount</th></tr></thead><tbody>${list.map((item) => `<tr><td>${esc(item.createdAt || item.date || '—')}</td><td>${esc(item.type || 'fund')}</td><td>${esc(item.description || item.message || item.program || 'Campaign contribution')}</td><td>₹${Number(item.amount || 0).toLocaleString('en-IN')}</td></tr>`).join("")}</tbody></table>` : '<div class="empty-state"><div class="serif">No funds recorded yet.</div><div>Donations and fund utilization will appear here.</div></div>'}</div>`;
+    const title = donorView ? "Giving history" : "Funds";
+    const sub = donorView ? "Every donation you’ve made on NGOFlow." : "Donations and utilization records, scoped to the NGO and optionally a campaign.";
+    return `<div class="main-header"><div><h1>${title}</h1><p>${sub}</p></div></div><div class="panel">${list.length ? `<div class="table-scroll"><table><thead><tr><th>Date</th><th>Type</th><th>${donorView ? "Campaign" : "Description"}</th>${donorView ? "" : "<th>Category</th>"}<th>Amount</th></tr></thead><tbody>${list.map((item) => `<tr><td>${fmtDate(item.utilizedOn || item.createdAt || item.date)}</td><td><span class="badge ${item.type === "utilization" ? "badge-donor" : "badge-active"}">${esc(item.type || "fund")}</span></td><td>${esc(donorView ? item.program : (item.description || item.message || "Campaign contribution"))}</td>${donorView ? "" : `<td>${item.type === "utilization" ? esc(item.category || "other").replace(/_/g, " ") : "—"}</td>`}<td>${money(item.amount)}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty-state"><div class="serif">${donorView ? "No donations yet." : "No funds recorded yet."}</div><div>${donorView ? "Your contributions will appear here." : "Donations and fund utilization will appear here."}</div></div>`}</div>`;
+}
+
+function fundsHtml(role, d) {
+    const list = givingHtml(d.funds || []);
+    if (!isNgoAdmin(role)) return list;
+    const options = (d.campaigns || []).map((c) => `<option value="${esc(c.id)}">${esc(c.title)}</option>`).join("");
+    const categories = (d.utilization_categories || []).map((c) => `<option value="${esc(c.value)}">${esc(c.label)}</option>`).join("");
+    const today = new Date().toISOString().slice(0, 10);
+    const form = `<div class="panel"><div class="panel-head"><h3>Record fund utilization</h3></div><form class="panel-body" id="utilization-form"><p class="muted" style="margin-top:0">Donors to the selected campaign see this entry on their dashboard, so describe the spend clearly.</p><div class="field-row"><div class="field"><label>Campaign</label><select id="u-campaign"><option value="">General NGO operations</option>${options}</select></div><div class="field"><label>Category</label><select id="u-category" required>${categories}</select></div></div><div class="field-row"><div class="field"><label>Amount (₹)</label><input id="u-amount" type="number" min="1" step="1" required></div><div class="field"><label>Date used</label><input id="u-date" type="date" max="${today}" value="${today}" required></div><div class="field"><label>People reached</label><input id="u-beneficiaries" type="number" min="0" step="1" value="0"></div></div><div class="field"><label>What were the funds used for?</label><input id="u-description" maxlength="300" required placeholder="e.g. 200 school kits distributed in Ward 4"></div><div class="field"><label>Proof link (optional)</label><input id="u-proof" type="url" placeholder="https://… receipt, invoice or photo"></div><div class="save-row"><span class="error-msg" id="utilization-error"></span><span class="saved-msg" id="utilization-saved">Utilization recorded.</span><button class="btn-solid">Record utilization</button></div></form></div>`;
+    return list.replace('<div class="panel">', `${form}<div class="panel">`);
+}
+
+function bindUtilization() {
+    const form = document.getElementById("utilization-form");
+    if (!form) return;
+    form.onsubmit = async e => {
+        e.preventDefault();
+        document.getElementById("utilization-error").classList.remove("show");
+        try {
+            await api("/funds/utilizations", {
+                method: "POST",
+                body: JSON.stringify({
+                    campaignId: el("u-campaign").value || null,
+                    category: el("u-category").value,
+                    amount: Number(el("u-amount").value),
+                    utilizedOn: el("u-date").value,
+                    beneficiariesReached: Number(el("u-beneficiaries").value || 0),
+                    description: el("u-description").value.trim(),
+                    proofUrl: el("u-proof").value.trim(),
+                }),
+            });
+            await dashboard();
+            tab("funds");
+            flash("utilization-saved");
+        } catch (x) {
+            error("utilization-error", x.message);
+        }
+    };
 }
 
 function reportHtml(d) {

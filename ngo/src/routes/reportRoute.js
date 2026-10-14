@@ -1,8 +1,9 @@
 import express from 'express';
-import { fetchReports } from '../controllers/reportController.js';
+import { fetchDetailedReport, fetchReports } from '../controllers/reportController.js';
 
 const router = express.Router();
 
 router.get('/', fetchReports);
+router.get('/detailed', fetchDetailedReport);
 
 export default router;

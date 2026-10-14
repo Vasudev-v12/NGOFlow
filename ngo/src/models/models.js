@@ -112,6 +112,17 @@ const notificationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Spending categories shown to donors. Keys are stored; labels are display-only.
+const UTILIZATION_CATEGORIES = Object.freeze({
+  program_delivery: 'Program delivery',
+  supplies: 'Supplies & materials',
+  staff: 'Staff & volunteers',
+  logistics: 'Transport & logistics',
+  infrastructure: 'Infrastructure & equipment',
+  administration: 'Administration',
+  other: 'Other',
+});
+
 const fundEntrySchema = new mongoose.Schema(
   {
     ngoId: { type: mongoose.Schema.Types.ObjectId, ref: 'Ngo', required: true, index: true },
@@ -120,6 +131,13 @@ const fundEntrySchema = new mongoose.Schema(
     amount: { type: Number, required: true, min: 1 },
     description: { type: String, default: '', trim: true },
     recordedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    // Set on 'fund' entries created from a donation so money can be traced end to end.
+    donationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Donation', default: null },
+    // Utilization details. These are published to donors of the campaign/NGO.
+    category: { type: String, enum: Object.keys(UTILIZATION_CATEGORIES), default: 'other' },
+    utilizedOn: { type: Date, default: null },
+    beneficiariesReached: { type: Number, default: 0, min: 0 },
+    proofUrl: { type: String, default: '', trim: true },
   },
   { timestamps: true }
 );
@@ -150,6 +168,7 @@ notificationSchema.set('toJSON', {
 campaignSchema.index({ ngoId: 1, createdBy: 1, createdAt: -1 });
 donationSchema.index({ ngoId: 1, campaignId: 1, createdAt: -1 });
 fundEntrySchema.index({ ngoId: 1, campaignId: 1, createdAt: -1 });
+fundEntrySchema.index({ ngoId: 1, type: 1, campaignId: 1 });
 activityLogSchema.index({ ngoId: 1, createdAt: -1 });
 
 const User = mongoose.models.User || mongoose.model('User', userSchema);
@@ -189,4 +208,4 @@ async function bootstrapAdmin() {
   // A Super Admin owns the platform, not a tenant NGO.
 }
 
-export { User, Ngo, Campaign, Donation, Notification, FundEntry, ActivityLog, bootstrapAdmin };
+export { User, Ngo, Campaign, Donation, Notification, FundEntry, ActivityLog, UTILIZATION_CATEGORIES, bootstrapAdmin };
