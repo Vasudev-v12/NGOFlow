@@ -78,7 +78,7 @@ const createUtilization = async (req, res) => {
             }
           }
         }
-      }]);
+      }], { updatePipeline: true });
     }
     await recordActivity({ ngoId, actorId: current._id, action: 'fund.utilization_recorded', entityType: 'fund_entry', entityId: entry._id, details: { amount, campaignId, category } });
     res.status(201).json({ ...entry.toObject(), id: entry._id.toString() });
